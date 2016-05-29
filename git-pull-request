@@ -2,10 +2,11 @@
 <?php
 declare(strict_types = 1);
 
-require file_exists(__DIR__.'/vendor/autoload.php') ? __DIR__.'/vendor/autoload.php' : __DIR__.'/../../autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
 $version = '0.1.0-alpha';
 
 $app = new Symfony\Component\Console\Application('git pr', $version);
 $app->add(new \GitPullRequest\Application\InitCommand());
+$app->add(new \GitPullRequest\Application\MergeCommand());
 $app->run();

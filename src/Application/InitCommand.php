@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace GitPullRequest\Application;
 
-use GitPullRequest\DomainModel\Config\Config;
 use GitPullRequest\Git\Git;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -24,8 +23,6 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 final class InitCommand extends AbstractCommand
 {
-    /** @var Config */
-    private $config;
     /**
      * @var array
      */
@@ -50,18 +47,6 @@ final class InitCommand extends AbstractCommand
     /** @var string[] */
     private $options;
 
-    /**
-     * @param null $name
-     *
-     * @throws \Symfony\Component\Console\Exception\LogicException
-     */
-    public function __construct($name = null)
-    {
-        parent::__construct($name);
-
-        $this->config = new Config();
-    }
-
     protected function configure()
     {
         parent::configure();
@@ -69,31 +54,9 @@ final class InitCommand extends AbstractCommand
         $this
             ->setName('init')
             ->setAliases(['config', 'configure', 'setup'])
-            ->setDescription(
-                'Generates/Updates a configuration file'
-            )
+            ->setDescription('Generates/Updates a configuration file')
             ->addArgument('file-type', InputArgument::OPTIONAL, 'Type of file to generate')
-            ->setHelp(
-                <<<'EOT'
-The <info>git pr %command.name%</info> command creates/updates a configuration
-file (e.g <comment>.git-pull-request.yml</comment>).
-
-It can generate 1 out of 3 configuration files:
-* <info><HOME>/.git-pull-request.yml</info>
-        can store global information such as the default credentials
-        for all your provider (Bitbucket, GitHub, GitLab)
-* <info><WORKING_DIR>/.git-pull-request.yml</info>
-        can store generic information about your repository:
-        - its full-name
-        - the provider to use
-        - the way we can detect if a pull request is a PATCH, MINOR or MAJOR version
-        - ...
-        This file should be shared across the team
-* <info><WORKING_DIR>/.git/.git-pull-request.yml</info>
-        can store your credentials to connect to the current repository's provider.
-        It may also override information stored in the <comment>shared</comment> file but it is not recommended.
-EOT
-            );
+            ->setHelp(file_get_contents(__DIR__.'/.help/init'));
     }
 
     /**
@@ -111,13 +74,13 @@ EOT
 
         switch ($input->getArgument('file-type')) {
             case 'global':
-                $this->config->saveGlobalOptions($this->options);
+                $this->getConfig()->saveGlobalOptions($this->options);
                 break;
             case 'shared':
-                $this->config->saveSharedOptions($this->options);
+                $this->getConfig()->saveSharedOptions($this->options);
                 break;
             case 'local':
-                $this->config->saveLocalOptions($this->options);
+                $this->getConfig()->saveLocalOptions($this->options);
                 break;
             default:
                 return 1;
@@ -177,7 +140,7 @@ EOT
             '<HOME>',
             $home,
             <<<'EOT'
-           The <info>init</info> command may generate 3 files:
+The <info>init</info> command may generate 3 files:
   * <info><HOME>/.git-pull-request.yml</info> stores global information such as the default credentials
   * <info><WORKING_DIR>/.git-pull-request.yml</info> stores generic information about your repository
   * <info><WORKING_DIR>/.git/.git-pull-request.yml</info> store your credentials to connect to the current repository's provider.
@@ -215,23 +178,24 @@ EOT
      */
     private function askGlobalOptions() : array
     {
-        $definedOptions = $this->config->getGlobalOptions();
+        $definedOptions = $this->getConfig()->getGlobalOptions();
         $providers      = ['bitbucket', 'github', 'gitlab'];
         $options        = [];
         foreach ($providers as $provider) {
             if ($this->getIo()->confirm(sprintf('Do you want to configure a global %s account ?', $provider))) {
-                $current                         = $definedOptions['providers'][$provider];
+                $current                         = $definedOptions['providers'][$provider] ?? [];
                 $options['providers'][$provider] = [
-                    'user'     => $this->getIo()->ask($provider.' user', $current['user'] ?? null),
-                    'password' => $this->getIo()->ask($provider.' password or token', $current['password'] ?? null),
+                    'user'         => $this->getIo()->ask($provider.' user', $current['user'] ?? null),
+                    'password'     => $this->getIo()->ask($provider.' password or token', $current['password'] ?? null),
+                    'clone_method' => $this->askCloneMethod($current['clone_method'] ?? ''),
                 ];
             }
         }
 
         $options = array_merge(
             $options,
-            $this->askCommitOptions($definedOptions['commits'] ?? [], true),
-            $this->askLabelOptions($definedOptions['labels'] ?? [], false)
+            $this->askCommitterOptions($definedOptions['committer'] ?? []),
+            $this->askLabelOptions($definedOptions['labels'] ?? [], true)
         );
 
         return $options;
@@ -244,13 +208,13 @@ EOT
      */
     private function askSharedOptions() : array
     {
-        $definedOptions = $this->config->getSharedOptions();
+        $definedOptions = $this->getConfig()->getSharedOptions();
         $options        = [];
 
         $options = array_merge(
             $options,
-            $this->askProviderOption($definedOptions['provider'] ?? [], true),
-            $this->askLabelOptions($definedOptions['labels'] ?? [], true)
+            $this->askProviderOption($definedOptions['provider'] ?? []),
+            $this->askLabelOptions($definedOptions['labels'] ?? [])
         );
 
         return $options;
@@ -263,7 +227,7 @@ EOT
      */
     private function askLocalOptions() : array
     {
-        $definedOptions = $this->config->getLocalOptions();
+        $definedOptions = $this->getConfig()->getLocalOptions();
         $options        = [];
         $this->getIo()->text(
             [
@@ -283,21 +247,20 @@ EOT
 
         $options = array_merge(
             $options,
-            $this->askCommitOptions($definedOptions['commits'] ?? [], true),
-            $this->askProviderOption($definedOptions['provider'] ?? [], false),
-            $this->askLabelOptions($definedOptions['labels'] ?? [], false)
+            $this->askCommitterOptions($definedOptions['committer'] ?? []),
+            $this->askProviderOption($definedOptions['provider'] ?? [], true),
+            $this->askLabelOptions($definedOptions['labels'] ?? [], true)
         );
 
         return $options;
     }
 
     /**
-     * @param array $previouslyDefinedOption
-     * @param bool  $confirmDefaultValue
+     * @param array $default
      *
      * @return array
      */
-    private function askCommitOptions(array $previouslyDefinedOption, bool $confirmDefaultValue) : array
+    private function askCommitterOptions(array $default) : array
     {
         $this->getIo()->text(
             [
@@ -306,25 +269,21 @@ EOT
             ]
         );
 
-        if (!$this->getIo()->confirm('Do you want to define those information ?', $confirmDefaultValue)) {
-            return [];
-        }
-
         return [
-            'commits' => [
-                'name'  => $this->getIo()->ask('user.name', $previouslyDefinedOption['name'] ?? null),
-                'email' => $this->getIo()->ask('user.email', $previouslyDefinedOption['email'] ?? null),
+            'committer' => [
+                'name'  => $this->getIo()->ask('user.name', $default['name'] ?? null),
+                'email' => $this->getIo()->ask('user.email', $default['email'] ?? null),
             ],
         ];
     }
 
     /**
-     * @param array $previouslyDefinedOption
-     * @param bool  $confirmDefaultValue
+     * @param array $default
+     * @param bool  $askConfirmation
      *
      * @return array
      */
-    private function askLabelOptions(array $previouslyDefinedOption, bool $confirmDefaultValue) : array
+    private function askLabelOptions(array $default, bool $askConfirmation = false) : array
     {
         $this->getIo()->text(
             [
@@ -332,46 +291,46 @@ EOT
                 'The tag will be guessed according to the information contained in the pull request.',
                 'For example, if for example the pull request contains an <info>enhancement</info> label, we will update the MINOR version of the previous tag.',
                 'If no label are defined, it will search in the pull request title.',
+                '<comment>The best place to store this information is in the shared file.</comment>',
             ]
         );
 
-        if (!$this->getIo()->confirm('Do you want to define those label ?', $confirmDefaultValue)) {
+        if ($askConfirmation && !$this->getIo()->confirm('Do you want to define those label ?', false)) {
             return [];
         }
 
         return [
             'labels' => [
-                'patch' => $this->getIo()->ask('patch', $previouslyDefinedOption['patch'] ?? 'bug'),
-                'minor' => $this->getIo()->ask('minor', $previouslyDefinedOption['minor'] ?? 'enhancement'),
-                'major' => $this->getIo()->ask('major', $previouslyDefinedOption['major'] ?? 'bc-break'),
+                'patch' => $this->getIo()->ask('patch', $default['patch'] ?? 'bug'),
+                'minor' => $this->getIo()->ask('minor', $default['minor'] ?? 'enhancement'),
+                'major' => $this->getIo()->ask('major', $default['major'] ?? 'bc-break'),
             ],
         ];
     }
 
     /**
-     * @param string|null $previouslyDefinedOption
-     * @param bool        $confirmDefaultValue
+     * @param string[] $default
+     * @param bool     $askConfirmation
      *
      * @return array
      */
-    private function askProviderOption($previouslyDefinedOption, bool $confirmDefaultValue = true) : array
+    private function askProviderOption(array $default, bool $askConfirmation = false) : array
     {
         $this->getIo()->text(
             [
                 'The <info>provider</info> config contains every information about your remote repository.',
                 'Specifying it will help guessing how to retrieve pull request information.',
+                '<comment>The best place to store this information is in the shared file.</comment>',
             ]
         );
 
-        if (!$this->getIo()->confirm('Do you want to define the provider ?', $confirmDefaultValue)) {
+        if ($askConfirmation && !$this->getIo()->confirm('Do you want to define the provider ?', false)) {
             return [];
         }
 
-        $provider = $this->getIo()->choice(
-            'provider',
-            array_keys(self::$defaultHosts),
-            $previouslyDefinedOption['name'] ?? null
-        );
+        $choices       = array_keys(self::$defaultHosts);
+        $defaultChoice = in_array($default['name'], $choices, true) ? $default['name'] : null;
+        $provider      = $this->getIo()->choice('provider', $choices, $defaultChoice);
 
         $apiBaseUrl = null;
         $host       = self::$defaultHosts[$provider];
@@ -388,10 +347,24 @@ EOT
 
         return [
             'provider' => [
-                'name'       => $provider,
-                'api'        => $apiBaseUrl,
-                'repository' => $this->getIo()->ask('What is your repository name ?', 'organization/repo'),
+                'name'         => $provider,
+                'api'          => $apiBaseUrl,
+                'clone_method' => $this->askCloneMethod($default['clone_method'] ?? ''),
+                'repository'   => $this->getIo()->ask(
+                    'What is your repository name ?',
+                    $default['repository'] ?? 'organization/repo'
+                ),
             ],
         ];
+    }
+
+    /**
+     * @param string $default
+     *
+     * @return string
+     */
+    private function askCloneMethod(string $default) : string
+    {
+        return $this->getIo()->choice('Clone method', ['https', 'ssh'], '' === $default ? null : $default);
     }
 }

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace GitPullRequest\Application;
 
+use GitPullRequest\DomainModel\Config\Config;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -23,8 +24,42 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 abstract class AbstractCommand extends Command
 {
+    /** @var Config */
+    private $config;
+
     /** @var SymfonyStyle */
     private $symfonyStyleIO;
+
+    /**
+     * @param null $name
+     *
+     * @throws \Symfony\Component\Console\Exception\LogicException
+     */
+    public function __construct($name = null)
+    {
+        parent::__construct($name);
+
+        $this->config = new Config();
+    }
+
+    /**
+     * @return Config
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+    /** @param string $stepName */
+    public function startStep(string $stepName)
+    {
+        $this->getIo()->write(' > '.$stepName.'... ');
+    }
+
+    public function stepSucceeded()
+    {
+        $this->writeColorText('OK', 'green');
+    }
 
     /**
      * Initializes the command just after the input has been validated.
@@ -76,6 +111,30 @@ abstract class AbstractCommand extends Command
         return $this->symfonyStyleIO;
     }
 
+    /** @param string $waningMessage */
+    protected function stepWarning(string $waningMessage = '')
+    {
+        $this->writeColorText('WARN', 'yellow');
+        if ('' !== $waningMessage) {
+            $this->getIo()->warning($waningMessage);
+        }
+    }
+
+    /**
+     * @param string $errorMessage
+     *
+     * @return bool
+     */
+    protected function stepFailed(string $errorMessage = '') : bool
+    {
+        $this->writeColorText('FAIL', 'red');
+        if ('' !== $errorMessage) {
+            $this->getIo()->error($errorMessage);
+        }
+
+        return false;
+    }
+
     /**
      * @param InputInterface  $input
      * @param OutputInterface $output
@@ -85,5 +144,14 @@ abstract class AbstractCommand extends Command
         if (null === $this->symfonyStyleIO) {
             $this->symfonyStyleIO = new SymfonyStyle($input, $output);
         }
+    }
+
+    /**
+     * @param string $text
+     * @param string $color
+     */
+    private function writeColorText(string $text, string $color)
+    {
+        $this->getIo()->writeln("<fg=$color>$text</>");
     }
 }
