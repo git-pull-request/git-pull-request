@@ -7,4 +7,5 @@ require file_exists(__DIR__.'/vendor/autoload.php') ? __DIR__.'/vendor/autoload.
 $version = '0.1.0-alpha';
 
 $app = new Symfony\Component\Console\Application('git pr', $version);
+$app->add(new \GitPullRequest\Application\InitCommand());
 $app->run();
