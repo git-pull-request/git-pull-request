@@ -1,6 +1,4 @@
 .php_cs.cache
-.git-pull-request.yml
-.git-pull-request.yml.dist
 .vagrant/
 composer.phar
 git-pull-request.phar
