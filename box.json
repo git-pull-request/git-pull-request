@@ -1,0 +1,29 @@
+{
+  "algorithm": "SHA512",
+  "chmod": "0755",
+  "compactors": [
+    "Herrera\\Box\\Compactor\\Json",
+    "Herrera\\Box\\Compactor\\Php"
+  ],
+  "compression": "GZ",
+  "directories": ["src/"],
+  "finder": [
+    {
+      "name": "*.php",
+      "exclude": [
+        ".gitignore",
+        ".md",
+        "phpunit",
+        "Tester",
+        "Tests",
+        "tests",
+        "yaml"
+      ],
+      "in": "vendor"
+    }
+  ],
+  "git-version": "package_version",
+  "main": "git-pull-request",
+  "output": "git-pull-request.phar",
+  "stub": true
+}
