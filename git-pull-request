@@ -1,0 +1,10 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types = 1);
+
+require file_exists(__DIR__.'/vendor/autoload.php') ? __DIR__.'/vendor/autoload.php' : __DIR__.'/../../autoload.php';
+
+$version = '0.1.0-alpha';
+
+$app = new Symfony\Component\Console\Application('git pr', $version);
+$app->run();
