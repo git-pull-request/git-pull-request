@@ -7,6 +7,10 @@
   ],
   "compression": "GZ",
   "directories": ["src/"],
+  "files": [
+    "src/Application/.help/init",
+    "src/Application/.help/merge"
+  ],
   "finder": [
     {
       "name": "*.php",
@@ -16,8 +20,7 @@
         "phpunit",
         "Tester",
         "Tests",
-        "tests",
-        "yaml"
+        "tests"
       ],
       "in": "vendor"
     }

@@ -1,0 +1,22 @@
+The <info>git pr %command.name%</info> command merges a pull request.
+
+Suppose you have a pull request that wants to merge 
+the branch <comment>my-feature-1</comment> of the repository <comment>https://github.com/my-user/repository</comment>
+to the branch <comment>develop</comment> of the repository <comment>https://github.com/project/repository</comment>,
+the command will do the following:
+    - retrieve pull request information from your remote repository
+    - check pull request status (closed ? merged ? mergeable ?)
+    - <info>git clone</info> <comment>https://github.com/project/repository</comment>
+    - <info>git checkout</info> <comment>develop</comment>
+    - <info>git checkout -b</info> random-branch-name <comment>develop</comment>
+    - <info>git pull</info> <comment>https://github.com/my-user/repository my-feature-1</comment>
+    - if <info>--changelog</info> option is specified, it will guess the new tag, and add a new entry in the CHANGELOG.md file
+    - if <info>--changelog</info> option is specified, <info>git add <comment>CHANGELOG.md</comment>; git commit -m "Add new tag"</info>.
+    - <info>git rebase</info> <comment>develop</comment>
+    - <info>git checkout</info> <comment>develop</comment>
+    - <info>git merge --squash --ff-only</info>
+    - <info>git commit -m "<comment><pull-request-title></comment>"</info>.
+    - if <info>--tag</info> option is specified, <info>git tag <comment><guessed-tag></comment> -m "<comment><pull-request-title></comment>"</info>
+
+For security reasons, it will not push the changes to the remote repository.
+This allows to check that everything works fine, run the tests before pushing the changes to the remote repository.

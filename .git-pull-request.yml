@@ -4,6 +4,7 @@
 provider:
     name: github
     api: 'https://api.github.com'
+    clone_method: https
     repository: git-pull-request/git-pull-request
 labels:
     patch: bug

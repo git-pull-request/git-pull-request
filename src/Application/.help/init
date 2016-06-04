@@ -1,0 +1,17 @@
+The <info>git pr %command.name%</info> command creates/updates a configuration
+file (e.g <comment>.git-pull-request.yml</comment>).
+
+It can generate 1 out of 3 configuration files:
+* <info><HOME>/.git-pull-request.yml</info>
+        can store global information such as the default credentials
+        for all your provider (Bitbucket, GitHub, GitLab)
+* <info><WORKING_DIR>/.git-pull-request.yml</info>
+        can store generic information about your repository:
+        - its full-name
+        - the provider to use
+        - the way we can detect if a pull request is a PATCH, MINOR or MAJOR version
+        - ...
+        This file should be shared across the team
+* <info><WORKING_DIR>/.git/.git-pull-request.yml</info>
+        can store your credentials to connect to the current repository's provider.
+        It may also override information stored in the <comment>shared</comment> file but it is not recommended.

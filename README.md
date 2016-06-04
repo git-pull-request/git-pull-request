@@ -9,7 +9,8 @@ Installation
 Download the `git-pull-request.phar` (we will provide it soon), rename it to `git-pr` and put it somewhere accessible by
 your `PATH`.
 
-### Setup your repository to use `git pr`
+Setup your repository to use `git pr`
+-------------------------------------
 
 **Provides shared information**
 
@@ -24,7 +25,8 @@ Use the `git pr init local` command and follow the instructions.
 It will produce a `.git-pull-request.yml` file inside the `.git` subdirectory. That way you can be sure it will never be 
 shared with others
 
-### Setup global information
+Setup global information
+------------------------
 
 If you have a lot of repositories, it may be painful to specify your credentials in every repository.  
 Moreover, some commands may be run outside of a git working tree.  
